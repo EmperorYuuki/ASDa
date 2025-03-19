@@ -1,0 +1,547 @@
+ 
+/**
+ * translator.css
+ * Translator interface styles for QuillSync AI
+ */
+
+/* Main Container */
+.translator-container {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 80px minmax(0, 1fr);
+    grid-template-areas: 
+      "source controls output";
+    gap: var(--spacing-md);
+    height: 100%;
+  }
+  
+  /* Translator Section Base */
+  .translator-section {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--blur-radius));
+    -webkit-backdrop-filter: blur(var(--blur-radius));
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+  }
+  
+  .source-section {
+    grid-area: source;
+  }
+  
+  .output-section {
+    grid-area: output;
+  }
+  
+  /* Section Headers */
+  .section-title {
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: 1rem;
+    font-weight: 600;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+  }
+  
+  .section-title i {
+    margin-right: var(--spacing-sm);
+    color: var(--accent-color);
+  }
+  
+  /* Control Bar */
+  .control-bar {
+    display: flex;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  
+  /* Text Areas */
+  #input-text,
+  #chapter-text {
+    flex: 1;
+    width: 100%;
+    border: none;
+    border-radius: 0;
+    resize: none;
+    padding: var(--spacing-md);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    transition: background var(--transition-fast);
+    font-family: 'Exo 2', 'Poppins', monospace;
+    line-height: 1.6;
+  }
+  
+  #input-text:focus,
+  #chapter-text:focus {
+    outline: none;
+    background: var(--bg-secondary);
+    box-shadow: none;
+  }
+  
+  /* Text Controls */
+  .text-controls {
+    display: flex;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  
+  .stats {
+    margin-left: auto;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+  }
+  
+  /* Translation Output */
+  .translation-output {
+    flex: 1;
+    padding: var(--spacing-md);
+    overflow-y: auto;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    min-height: 100px;
+  }
+  
+  /* The Quill Editor Customization */
+  .ql-editor {
+    font-family: 'Exo 2', 'Poppins', monospace;
+    font-size: 1rem;
+    line-height: 1.6;
+    padding: var(--spacing-md);
+  }
+  
+  .ql-container.ql-snow {
+    border: none;
+  }
+  
+  .ql-toolbar.ql-snow {
+    border: none;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+  }
+  
+  /* Translator Controls */
+  .translator-controls {
+    grid-area: controls;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--spacing-md);
+    align-items: center;
+  }
+  
+  /* Progress Bar */
+  .progress-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-xs);
+  }
+  
+  .progress-bar {
+    width: 100%;
+    height: 8px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+  
+  .progress {
+    height: 100%;
+    width: 0%;
+    transition: width var(--transition-normal);
+    border-radius: var(--radius-sm);
+  }
+  
+  #progress-status {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    text-align: center;
+  }
+  
+  /* Translation Method Settings */
+  .translation-method {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+  }
+  
+  .translation-method select {
+    width: 100%;
+  }
+  
+  .translation-options {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+  
+  /* Refine Options Dropdown */
+  .refine-options-dropdown {
+    position: relative;
+  }
+  
+  .refine-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--blur-radius));
+    -webkit-backdrop-filter: blur(var(--blur-radius));
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-sm);
+    z-index: 10;
+    min-width: 200px;
+    display: none;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  }
+  
+  .refine-dropdown-menu.show {
+    display: block;
+  }
+  
+  .refine-option {
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background var(--transition-fast);
+  }
+  
+  .refine-option:hover {
+    background: var(--bg-secondary);
+  }
+  
+  /* Responsive Adjustments */
+  @media (max-width: 1200px) {
+    .translator-container {
+      grid-template-columns: 1fr;
+      grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr);
+      grid-template-areas: 
+        "source"
+        "controls"
+        "output";
+      height: auto;
+    }
+    
+    .translator-controls {
+      flex-direction: row;
+      padding: var(--spacing-md);
+      flex-wrap: wrap;
+      justify-content: space-between;
+    }
+    
+    .translator-section {
+      height: 400px;
+    }
+    
+    .progress-container {
+      width: 200px;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .translator-controls {
+      flex-direction: column;
+      gap: var(--spacing-sm);
+    }
+    
+    .progress-container {
+      width: 100%;
+    }
+    
+    .control-bar,
+    .text-controls {
+      padding: var(--spacing-xs) var(--spacing-sm);
+      flex-direction: column;
+      align-items: stretch;
+    }
+    
+    .control-bar select,
+    .control-bar input {
+      width: 100%;
+    }
+    
+    .stats {
+      margin-left: 0;
+      width: 100%;
+      text-align: center;
+      margin-top: var(--spacing-xs);
+    }
+    
+    #input-text,
+    #chapter-text,
+    .translation-output {
+      padding: var(--spacing-sm);
+    }
+  }
+  /**
+ * Improved translator controls for QuillSync AI
+ * These styles should be added to features/translator.css
+ */
+
+/* Enhanced Translator Controls */
+.translator-controls {
+    grid-area: controls;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--spacing-lg);
+    align-items: center;
+    background: var(--bg-tertiary);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+  }
+  
+  /* Prominent Translate Button */
+  .translator-controls .primary-action {
+    width: 100%;
+    padding: var(--spacing-md);
+    font-size: 1.1rem;
+    border-radius: var(--radius-md);
+    background: linear-gradient(to right, var(--accent-color), var(--accent-hover));
+    box-shadow: 0 4px 10px rgba(var(--accent-rgb), 0.3);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .translator-controls .primary-action:before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    );
+    transition: left 0.7s ease;
+  }
+  
+  .translator-controls .primary-action:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(var(--accent-rgb), 0.4);
+  }
+  
+  .translator-controls .primary-action:hover:before {
+    left: 100%;
+  }
+  
+  .translator-controls .primary-action i {
+    font-size: 1.2rem;
+    margin-right: var(--spacing-sm);
+  }
+  
+  /* Improved Progress Bar */
+  .progress-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-xs);
+  }
+  
+  .progress-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(var(--accent-rgb), 0.1);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+  
+  .progress {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-color), var(--accent-hover));
+    width: 0%;
+    transition: width var(--transition-normal);
+    border-radius: 10px;
+    background-size: 200% 100%;
+  }
+  
+  #progress-status {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    text-align: center;
+    margin-top: 4px;
+    font-weight: 500;
+  }
+  
+  /* Enhanced Translation Method Selector */
+  .translation-method {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-sm);
+    width: 100%;
+  }
+  
+  .translation-method span {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    width: 100%;
+    text-align: left;
+  }
+  
+  .translation-method select {
+    width: 100%;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    font-weight: 500;
+    text-align: center;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a0a8b0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right var(--spacing-sm) center;
+    background-size: 16px;
+    padding-right: var(--spacing-xl);
+    cursor: pointer;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  }
+  
+  .translation-method select:hover {
+    border-color: var(--accent-color);
+  }
+  
+  .translation-method select:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+    outline: none;
+  }
+  
+  /* Improved Toggle for Glossary */
+  .translation-options {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    width: 100%;
+    margin-top: var(--spacing-sm);
+  }
+  
+  .toggle-container {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: var(--spacing-md);
+    cursor: pointer;
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    transition: background-color var(--transition-fast);
+  }
+  
+  .toggle-container:hover {
+    background-color: rgba(var(--accent-rgb), 0.05);
+  }
+  
+  .toggle-container input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+  }
+  
+  .toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    background-color: var(--bg-secondary);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    transition: all var(--transition-fast);
+  }
+  
+  .toggle-switch:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 2px;
+    bottom: 2px;
+    background-color: var(--text-secondary);
+    border-radius: 50%;
+    transition: transform var(--transition-fast), background-color var(--transition-fast);
+  }
+  
+  input:checked + .toggle-switch {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+  }
+  
+  input:checked + .toggle-switch:before {
+    transform: translateX(20px);
+    background-color: white;
+  }
+  
+  .toggle-label {
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    font-weight: 500;
+    flex: 1;
+  }
+  
+  /* Responsive Adjustments */
+  @media (max-width: 1200px) {
+    .translator-controls {
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: var(--spacing-md);
+    }
+    
+    .translator-controls .primary-action {
+      width: auto;
+      flex: 0 0 auto;
+    }
+    
+    .progress-container {
+      flex: 1 1 200px;
+    }
+    
+    .translation-method {
+      flex: 1 1 200px;
+    }
+    
+    .translation-options {
+      flex: 1 1 200px;
+      margin-top: 0;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .translator-controls {
+      flex-direction: column;
+      padding: var(--spacing-sm);
+    }
+    
+    .translator-controls .primary-action,
+    .progress-container,
+    .translation-method,
+    .translation-options {
+      width: 100%;
+    }
+  }
