@@ -1,0 +1,31 @@
+{
+    "name": "quillsync-ai",
+    "version": "1.0.0",
+    "description": "AI translation tool for Chinese fanfiction",
+    "main": "chatgpt-server.js",
+    "scripts": {
+        "start": "node chatgpt-server.js",
+        "dev": "nodemon chatgpt-server.js"
+    },
+    "keywords": [
+        "translation",
+        "ai",
+        "fanfiction",
+        "chatgpt"
+    ],
+    "dependencies": {
+        "cors": "^2.8.5",
+        "dotenv": "^16.4.7",
+        "express": "^4.18.2",
+        "express-rate-limit": "^7.5.0",
+        "helmet": "^8.1.0",
+        "puppeteer": "^21.3.8",
+        "puppeteer-extra": "^3.3.6",
+        "puppeteer-extra-plugin-stealth": "^2.11.2",
+        "uuid": "^11.1.0",
+        "winston": "^3.17.0"
+    },
+    "devDependencies": {
+        "nodemon": "^3.0.1"
+    }
+}
