@@ -1042,8 +1042,6 @@ class OpenRouterService {
       }
     }
     
-    console.log("Glossary toggle state:", shouldApplyGlossary);
-    
     if (shouldApplyGlossary) {
       // Apply glossary if available and toggle is on
       GlossaryService.getGlossaryEntries(project.id)
@@ -1058,20 +1056,145 @@ class OpenRouterService {
             console.log('No glossary terms to apply');
           }
           
-          // Continue with translation process using processed text
-          this.processTranslation(textToTranslate, chineseText, project, strategy, chunkSize);
+          // Check if "none" chunking strategy is selected
+          if (strategy === 'none') {
+            // Process without chunking
+            this.processSingleChunkTranslation(textToTranslate, chineseText, project);
+          } else {
+            // Continue with normal chunked translation process
+            this.processTranslation(textToTranslate, chineseText, project, strategy, chunkSize);
+          }
         })
         .catch(error => {
           console.error('Error applying glossary:', error);
           // Continue with original text
-          this.processTranslation(chineseText, chineseText, project, strategy, chunkSize);
+          if (strategy === 'none') {
+            this.processSingleChunkTranslation(chineseText, chineseText, project);
+          } else {
+            this.processTranslation(chineseText, chineseText, project, strategy, chunkSize);
+          }
         });
     } else {
       // Skip glossary application if toggle is off
       UIService.showNotification('Glossary application skipped (toggle is off)', 'info', 3000);
       
-      // Continue with translation using original text
-      this.processTranslation(chineseText, chineseText, project, strategy, chunkSize);
+      // Check chunking strategy and proceed
+      if (strategy === 'none') {
+        this.processSingleChunkTranslation(chineseText, chineseText, project);
+      } else {
+        this.processTranslation(chineseText, chineseText, project, strategy, chunkSize);
+      }
+    }
+  }
+  
+  /**
+   * Process a single chunk translation without splitting
+   * @param {string} processedText - Text to translate (possibly with glossary applied)
+   * @param {string} originalText - Original text before processing (for verification)
+   * @param {Object} project - Current project
+   * @private
+   */
+  async processSingleChunkTranslation(processedText, originalText, project) {
+    try {
+      // For very large texts, warn the user
+      if (processedText.length > 50000) {
+        if (!confirm('The text is very large (over 50KB). Processing it as a single unit may cause issues with API limits or slow performance. Continue anyway?')) {
+          this.isTranslating = false;
+          UIService.toggleLoading(false);
+          UIService.toggleProgressBar(false);
+          return;
+        }
+      }
+      
+      UIService.updateProgress(10, 'Preparing single chunk translation...');
+      
+      // Get prompt toggle state
+      const includePromptToggle = document.getElementById('include-prompt-toggle');
+      const includePrompt = includePromptToggle ? includePromptToggle.checked : true;
+      
+      // Create translation prompt
+      const translationPrompt = TextService.generateTranslationPrompt(
+        processedText,
+        project.instructions || '',
+        includePrompt
+      );
+      
+      // Estimate tokens and cost
+      const estimateResult = await this.estimateTokensAndCost(
+        processedText, 
+        project.settings.openRouterModel
+      );
+      
+      // If the tokens exceed the model's context limit, warn and abort
+      const models = await this.getAvailableModels();
+      const modelInfo = models.find(m => m.id === project.settings.openRouterModel);
+      
+      if (modelInfo && modelInfo.context_length && 
+          estimateResult.estimatedTokens > modelInfo.context_length * 0.9) {
+        const proceed = confirm(
+          `Warning: The text likely exceeds ${modelInfo.name}'s context limit ` +
+          `(estimated ${estimateResult.estimatedTokens} tokens vs. ${modelInfo.context_length} limit). ` +
+          `This may result in incomplete translation. Consider using chunking instead. ` +
+          `Do you want to proceed anyway?`
+        );
+        
+        if (!proceed) {
+          this.isTranslating = false;
+          UIService.toggleLoading(false);
+          UIService.toggleProgressBar(false);
+          return;
+        }
+      }
+      
+      UIService.updateProgress(20, `Translating entire text (${estimateResult.estimatedTokens} tokens)...`);
+      
+      // Translate the entire text
+      const translation = await this.generateCompletion(
+        project.settings.openRouterModel,
+        translationPrompt,
+        0.3, // Lower temperature for more consistent translations
+        Math.min(10000, modelInfo?.context_length ? Math.floor(modelInfo.context_length * 0.5) : 4000), // Limit max tokens
+        false // Don't stream
+      );
+      
+      UIService.updateProgress(95, 'Finalizing translation...');
+      
+      // Save the translation to the project
+      const quill = UIService.getQuill();
+      if (quill) {
+        quill.setText(translation);
+        await ProjectService.updateProjectOutput(
+          project.id,
+          quill.getContents().ops
+        );
+      }
+      
+      this.isTranslating = false;
+      this.currentTranslation = translation;
+      
+      UIService.updateProgress(100, 'Translation complete');
+      UIService.showNotification('Translation completed successfully', 'success');
+      UIService.updateLastAction('Translation completed');
+      UIService.updateWordCounts();
+      
+      // Hide cancel button
+      const cancelBtn = document.getElementById('cancel-translation-btn');
+      if (cancelBtn) {
+        cancelBtn.style.display = 'none';
+      }
+      
+      UIService.toggleLoading(false);
+      UIService.toggleProgressBar(false);
+      
+      return translation;
+    } catch (error) {
+      console.error('Error in single chunk translation:', error);
+      throw error;
+    } finally {
+      this.isTranslating = false;
+      this.abortController = null;
+      UIService.toggleLoading(false);
+      UIService.toggleProgressBar(false);
     }
   }
   

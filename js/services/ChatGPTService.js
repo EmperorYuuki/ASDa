@@ -62,6 +62,26 @@ class ChatGPTService {
         refineBtn.addEventListener('click', this.handleRefineButtonClick.bind(this));
       }
       
+      // Set up prompt toggle with localStorage persistence
+      const includePromptToggle = document.getElementById('include-prompt-toggle');
+      if (includePromptToggle) {
+        // Load saved state from localStorage
+        const savedState = localStorage.getItem('includePrompt');
+        if (savedState !== null) {
+          includePromptToggle.checked = savedState === 'true';
+        } else {
+          // Default to true and save the default
+          includePromptToggle.checked = true;
+          localStorage.setItem('includePrompt', 'true');
+        }
+        
+        // Add change listener
+        includePromptToggle.addEventListener('change', function() {
+          localStorage.setItem('includePrompt', this.checked.toString());
+          UIService.updateLastAction('Prompt inclusion ' + (this.checked ? 'enabled' : 'disabled'));
+        });
+      }
+      
       console.log('ChatGPTService initialized successfully');
       return Promise.resolve();
     } catch (error) {
@@ -350,6 +370,10 @@ class ChatGPTService {
       const applyGlossaryToggle = document.getElementById('apply-glossary-toggle');
       const shouldApplyGlossary = applyGlossaryToggle ? applyGlossaryToggle.checked : true; // Default to true
 
+      // Get prompt toggle state
+      const includePromptToggle = document.getElementById('include-prompt-toggle');
+      const includePrompt = includePromptToggle ? includePromptToggle.checked : true; // Default to true
+
       // Process text with glossary if needed
       let textToTranslate = text;
       
@@ -373,8 +397,24 @@ class ChatGPTService {
         UIService.showNotification('Glossary application skipped (toggle is off)', 'info', 3000);
       }
 
-      // Perform the translation
-      await this.performTranslation(textToTranslate, currentProject, isRefinement);
+      // For very large texts with no chunking, show a warning
+      if (strategy === 'none' && textToTranslate.length > 50000) {
+        if (!confirm('The text is very large (over 50KB). Processing it as a single unit may cause issues with API limits or slow performance. Continue anyway?')) {
+          UIService.toggleLoading(false);
+          UIService.toggleProgressBar(false);
+          this.isTranslating = false;
+          return;
+        }
+      }
+
+      // Pass both includePrompt AND chunking strategy
+      await this.performTranslation(
+        textToTranslate, 
+        currentProject, 
+        isRefinement, 
+        includePrompt,
+        strategy === 'none' // Pass noChunking flag
+      );
     } catch (error) {
       this.isTranslating = false;
       UIService.toggleLoading(false);
@@ -386,25 +426,179 @@ class ChatGPTService {
   }
 
   /**
-   * Perform the actual translation request
+   * Perform translation of a single chunk without splitting
    * @param {string} text - Text to translate
    * @param {Object} project - The current project
    * @param {boolean} isRefinement - Whether this is a refinement
+   * @param {boolean} includePrompt - Whether to include the prompt
    * @returns {Promise<void>}
    * @private
    */
-  async performTranslation(text, project, isRefinement) {
+  async performSingleChunkTranslation(text, project, isRefinement, includePrompt = true) {
     try {
       // Set up abort controller for cancellation
       this.abortController = new AbortController();
       const signal = this.abortController.signal;
 
-      // Create request data
+      // Create request data with isRawText parameter
       const requestData = {
         text: text,
         chatGPTUrl: project.chatGPTUrl,
-        promptPrefix: project.instructions || 'Follow the instructions carefully and first check the memory for the glossary. Ensure that all terms are correctly used and consistent. Maintain full sentences and paragraphs—do not cut them off mid-sentence or with dashes:'
+        promptPrefix: project.instructions || 'Follow the instructions carefully and first check the memory for the glossary. Ensure that all terms are correctly used and consistent. Maintain full sentences and paragraphs—do not cut them off mid-sentence or with dashes:',
+        isRawText: !includePrompt
       };
+      
+      console.log('Sending single chunk translation request with isRawText:', !includePrompt);
+      
+      // Send request
+      const response = await fetch('http://localhost:3003/chunk-and-translate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData),
+        signal: signal
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`);
+      }
+      
+      // Process the streaming response
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+      let translation = '';
+      
+      UIService.updateProgress(30, 'Receiving translation...');
+      
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          
+          if (done) {
+            break;
+          }
+          
+          // Decode the chunk and add to buffer
+          buffer += decoder.decode(value, { stream: true });
+          
+          // Split by double newlines (SSE format)
+          const parts = buffer.split('\n\n');
+          buffer = parts.pop() || '';
+          
+          // Process each event
+          for (const part of parts) {
+            if (!part.trim()) continue;
+            
+            const lines = part.split('\n');
+            let eventType = '';
+            let dataStr = '';
+            
+            for (const line of lines) {
+              if (line.startsWith('event:')) {
+                eventType = line.substring(6).trim();
+              } else if (line.startsWith('data:')) {
+                dataStr = line.substring(5).trim();
+              }
+            }
+            
+            if (!dataStr) continue;
+            
+            try {
+              const parsedData = JSON.parse(dataStr);
+              
+              if (eventType === 'progress') {
+                translation = parsedData.partial || '';
+                UIService.updateProgress(
+                  30 + (parsedData.progress * 0.6), // Scale from 30% to 90%
+                  `Translating... ${Math.round(parsedData.progress)}%`
+                );
+                
+                // Update translation in editor
+                const quill = UIService.getQuill();
+                if (quill) {
+                  quill.setText(translation);
+                }
+              } else if (eventType === 'complete') {
+                translation = parsedData.translation;
+                
+                // Set the translation in the editor
+                const quill = UIService.getQuill();
+                if (quill) {
+                  quill.setText(translation);
+                  
+                  // Save to the project
+                  await ProjectService.updateProjectOutput(
+                    project.id,
+                    quill.getContents().ops
+                  );
+                }
+                
+                UIService.updateProgress(100, 'Translation complete');
+                UIService.showNotification('Translation completed successfully', 'success');
+                UIService.updateLastAction('Translation completed');
+                UIService.updateWordCounts();
+                
+                // Verify translation if enabled
+                if (project.settings?.autoVerify && project.settings?.openRouterApiKey) {
+                  this.verifyTranslation(text, translation);
+                }
+              }
+            } catch (error) {
+              console.error('Error processing translation update:', error);
+            }
+          }
+        }
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          console.log('Translation was cancelled');
+          throw new Error('Translation cancelled');
+        } else {
+          throw error;
+        }
+      }
+    } catch (error) {
+      // Error handling
+      console.error('Error in single chunk translation:', error);
+      throw error;
+    } finally {
+      this.isTranslating = false;
+      this.abortController = null;
+      UIService.toggleLoading(false);
+      UIService.toggleProgressBar(false);
+    }
+  }
+
+  /**
+   * Perform the actual translation request
+   * @param {string} text - Text to translate
+   * @param {Object} project - The current project
+   * @param {boolean} isRefinement - Whether this is a refinement
+   * @param {boolean} includePrompt - Whether to include the prompt
+   * @param {boolean} noChunking - Whether to process text without chunking
+   * @returns {Promise<void>}
+   * @private
+   */
+  async performTranslation(text, project, isRefinement, includePrompt = true, noChunking = false) {
+    try {
+      // Set up abort controller for cancellation
+      this.abortController = new AbortController();
+      const signal = this.abortController.signal;
+
+      // Create request data with BOTH parameters
+      const requestData = {
+        text: text,
+        chatGPTUrl: project.chatGPTUrl,
+        promptPrefix: project.instructions || 'Follow the instructions carefully and first check the memory for the glossary. Ensure that all terms are correctly used and consistent. Maintain full sentences and paragraphs—do not cut them off mid-sentence or with dashes:',
+        isRawText: !includePrompt,
+        noChunking: noChunking  // Add this parameter
+      };
+      
+      console.log('Sending translation request:', {
+        isRawText: !includePrompt,
+        noChunking: noChunking
+      });
       
       // Send request
       const response = await fetch('http://localhost:3003/chunk-and-translate', {
@@ -587,13 +781,22 @@ class ChatGPTService {
         // Continue with original text on error
       }
       
+      // Get prompt toggle state
+      const includePromptToggle = document.getElementById('include-prompt-toggle');
+      const includePrompt = includePromptToggle ? includePromptToggle.checked : true; // Default to true
+      
+      // Prepare text with respect to prompt toggle
+      const requestText = includePrompt
+        ? TextService.generateTranslationPrompt(textToTranslate, currentProject.instructions)
+        : textToTranslate;
+      
       // Set up abort controller for cancellation
       this.abortController = new AbortController();
       const signal = this.abortController.signal;
       
       // Create request data
       const requestData = {
-        text: textToTranslate,
+        text: requestText,
         chatGPTUrl: currentProject.chatGPTUrl,
         promptPrefix: currentProject.instructions || 'Follow the instructions carefully and first check the memory for the glossary. Ensure that all terms are correctly used and consistent. Maintain full sentences and paragraphs—do not cut them off mid-sentence or with dashes:'
       };

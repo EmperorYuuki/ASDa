@@ -122,6 +122,7 @@
                                         <option value="auto">Auto Chunking</option>
                                         <option value="chapter">Chapter-based</option>
                                         <option value="word-count">Word Count</option>
+                                        <option value="none">No Chunking</option>
                                     </select>
                                     <input type="number" id="chunk-size" value="1000" min="100" max="5000" step="100"
                                         title="Words per chunk" />
@@ -146,7 +147,7 @@
                                 </div>
                             </div>
 
-                            <!-- Actions Panel -->
+                            <!-- Translation Controls - Between editors -->
                             <div class="translator-controls">
                                 <button id="translate-btn" class="primary-action" title="Translate text">
                                     <i class="fas fa-language"></i>
@@ -160,20 +161,23 @@
                                     <span id="progress-status">Ready</span>
                                 </div>
 
-                                <div class="translation-method">
-                                    <span>Translation Method:</span>
-                                    <select id="translation-method">
-                                        <option value="chatgpt">ChatGPT</option>
-                                        <option value="openrouter">OpenRouter API</option>
-                                    </select>
-                                </div>
-
                                 <div class="translation-options">
-                                    <label class="toggle-container"
-                                        title="Apply glossary terms to source text before translation">
+                                    <div class="translation-method">
+                                        <select id="translation-method">
+                                            <option value="chatgpt">ChatGPT</option>
+                                            <option value="openrouter">OpenRouter API</option>
+                                        </select>
+                                    </div>
+
+                                    <label class="toggle-container" title="Apply glossary terms to source text before translation">
                                         <input type="checkbox" id="apply-glossary-toggle" checked>
                                         <span class="toggle-switch"></span>
                                         <span class="toggle-label">Apply Glossary</span>
+                                    </label>
+                                    <label class="toggle-container" title="Include prompt instructions with the source text">
+                                        <input type="checkbox" id="include-prompt-toggle" checked>
+                                        <span class="toggle-switch"></span>
+                                        <span class="toggle-label">Include Prompt</span>
                                     </label>
                                 </div>
                             </div>
@@ -542,6 +546,7 @@
                                                 <option value="auto">Auto Detect</option>
                                                 <option value="chapter">Chapter-based</option>
                                                 <option value="word-count">Word Count</option>
+                                                <option value="none">No Chunking</option>
                                             </select>
                                         </div>
                                         <div class="setting-item">

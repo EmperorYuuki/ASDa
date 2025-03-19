@@ -113,7 +113,6 @@ function initializeQuill() {
           userOnly: true
         }
       },
-      placeholder: 'Translation will appear here...'
     });
     
     // Register quill with UI service for word counts
@@ -128,7 +127,29 @@ function initializeQuill() {
     return null;
   }
 }
-
+/**
+ * Initialize prompt toggle with localStorage persistence
+ */
+function initializePromptToggle() {
+  const promptToggle = document.getElementById('include-prompt-toggle');
+  if (promptToggle) {
+    // Load saved state from localStorage
+    const savedState = localStorage.getItem('includePrompt');
+    if (savedState !== null) {
+      promptToggle.checked = savedState === 'true';
+    } else {
+      // Default to true and save the default
+      promptToggle.checked = true;
+      localStorage.setItem('includePrompt', 'true');
+    }
+    
+    // Add change listener
+    promptToggle.addEventListener('change', function() {
+      localStorage.setItem('includePrompt', this.checked.toString());
+      UIService.updateLastAction('Prompt inclusion ' + (this.checked ? 'enabled' : 'disabled'));
+    });
+  }
+}
 /**
  * Initialize all event handlers for the application
  */
@@ -141,6 +162,9 @@ function initializeEventHandlers() {
   
   // Set up glossary toggle
   initializeGlossaryToggle();
+  
+  // Set up prompt toggle
+  initializePromptToggle();
   
   // Set up export functionality
   initializeExportFunctionality();

@@ -1,0 +1,1 @@
+concurrently "node chatgpt-server.js" "http-server -d /public"

@@ -495,7 +495,7 @@ class UIService {
             userOnly: true
           }
         },
-        placeholder: 'Translation will appear here...'
+        placeholder: ''
       });
 
       // Add change listener to update word count

@@ -222,6 +222,11 @@ const TextService = {
       return [];
     }
     
+    // Handle "none" strategy - return text as a single chunk regardless of size
+    if (strategy === 'none') {
+      return [text];
+    }
+    
     switch (strategy) {
       case 'chapter':
         return chunkByChapters(text);
@@ -379,37 +384,43 @@ const TextService = {
    * @param {string} customInstructions - Custom instructions to include
    * @returns {string} Formatted prompt
    */
-  generateTranslationPrompt: (text, customInstructions) => {
+  generateTranslationPrompt: (text, customInstructions, includePrompt = true) => {
     if (!text) return '';
     
     try {
-      // Sanitize and trim the input text
-      const sanitizedText = String(text).trim();
-      
-      let prompt = 'Translate this Chinese text to English:';
-      
-      if (customInstructions) {
-        prompt = String(customInstructions).trim() + '\n\n' + prompt;
-      }
-      
-      // Add text analysis guidance for better translation
-      if (sanitizedText.length > 1000) {
-        prompt += '\n\nThis is a longer text. Please maintain consistency in terminology and style throughout the translation.';
-      }
-      
-      // Check if text contains dialog
-      if (sanitizedText.includes('"') || sanitizedText.includes('"') || 
-          sanitizedText.includes('「') || sanitizedText.includes('」')) {
-        prompt += '\n\nPlease preserve dialog formatting and character speech patterns in the translation.';
-      }
-      
-      return prompt + '\n\n' + sanitizedText;
+        // Sanitize and trim the input text
+        const sanitizedText = String(text).trim();
+        
+        // If includePrompt is false, just return the raw text
+        if (!includePrompt) {
+            return sanitizedText;
+        }
+        
+        let prompt = 'Translate this Chinese text to English:';
+        
+        if (customInstructions) {
+            prompt = String(customInstructions).trim() + '\n\n' + prompt;
+        }
+        
+        // Add text analysis guidance for better translation
+        if (sanitizedText.length > 1000) {
+            prompt += '\n\nThis is a longer text. Please maintain consistency in terminology and style throughout the translation.';
+        }
+        
+        // Check if text contains dialog
+        if (sanitizedText.includes('"') || sanitizedText.includes('"') || 
+            sanitizedText.includes('「') || sanitizedText.includes('」')) {
+            prompt += '\n\nPlease preserve dialog formatting and character speech patterns in the translation.';
+        }
+        
+        return prompt + '\n\n' + sanitizedText;
     } catch (error) {
-      console.error('Error generating translation prompt:', error);
-      return `Translate this Chinese text to English:\n\n${text}`;
+        console.error('Error generating translation prompt:', error);
+        return includePrompt ? 
+            `Translate this Chinese text to English:\n\n${text}` : 
+            text;
     }
-  },
-  
+},
   /**
    * Generate a verification prompt for OpenRouter API
    * @param {string} sourceText - Original Chinese text

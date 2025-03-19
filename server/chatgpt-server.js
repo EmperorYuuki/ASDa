@@ -499,7 +499,7 @@ function parseChunks(responseText) {
   return chunks;
 }
 
-async function translateChunk(chunk, requestId, page, chatGPTUrl, promptPrefix = 'Follow the instructions carefully and first check the memory for the glossary. Ensure that all terms are correctly used and consistent. Maintain full sentences and paragraphs—do not cut them off mid-sentence or with dashes:', retries = 3) {
+async function translateChunk(chunk, requestId, page, chatGPTUrl, promptPrefix = 'Follow the instructions carefully and first check the memory for the glossary. Ensure that all terms are correctly used and consistent. Maintain full sentences and paragraphs—do not cut them off mid-sentence or with dashes:', isRawText = false, retries = 3) {
     if (!page || page.isClosed()) {
         throw new Error('Browser page closed unexpectedly');
     }
@@ -509,8 +509,10 @@ async function translateChunk(chunk, requestId, page, chatGPTUrl, promptPrefix =
             if (!chunk || typeof chunk !== 'string' || !chunk.trim()) {
                 throw new Error('Invalid or empty chunk provided for translation');
             }
-            const prompt = `${promptPrefix} ${chunk}`;
-            log(`Translating chunk for request ${requestId}: ${prompt.substring(0, 50)}...`);
+            
+            // Use raw text or add prompt prefix based on isRawText flag
+            const prompt = isRawText ? chunk : `${promptPrefix} ${chunk}`;
+            log(`Translating chunk for request ${requestId} with${isRawText ? 'out' : ''} prompt: ${prompt.substring(0, 50)}...`);
 
             await page.bringToFront();
             await page.waitForSelector('#prompt-textarea', { visible: true, timeout: 60000 });
@@ -604,7 +606,14 @@ async function translateChunk(chunk, requestId, page, chatGPTUrl, promptPrefix =
 }
 
 app.post('/chunk-and-translate', async (req, res) => {
-  const { text, chatGPTUrl, promptPrefix = 'Follow the instructions carefully and first check the memory for the glossary. Ensure that all terms are correctly used and consistent. Maintain full sentences and paragraphs—do not cut them off mid-sentence or with dashes:' } = req.body;
+  const { 
+    text, 
+    chatGPTUrl, 
+    promptPrefix = 'Follow the instructions carefully and first check the memory for the glossary. Ensure that all terms are correctly used and consistent. Maintain full sentences and paragraphs—do not cut them off mid-sentence or with dashes:',
+    isRawText = false,
+    noChunking = false
+  } = req.body;
+  
   if (!text || !text.trim()) {
     return res.status(400).json({ error: 'No text provided for translation.' });
   }
@@ -615,9 +624,12 @@ app.post('/chunk-and-translate', async (req, res) => {
   res.flushHeaders();
 
   const requestId = generateUniqueId('request');
+  log(`Received translation request with isRawText: ${isRawText}, noChunking: ${noChunking}`);
   res.write(`event: start\ndata: ${JSON.stringify({ message: "Translation started", requestId })}\n\n`);
+  
   try {
-    const chunks = parseChunks(text);
+    // Only chunk the text if noChunking is false
+    const chunks = noChunking ? [text] : parseChunks(text);
     const totalWords = text.split(/\s+/).length;
     let processedWords = 0;
     let page = await withBrowserRestart(async () => {
@@ -635,7 +647,15 @@ app.post('/chunk-and-translate', async (req, res) => {
     for (let i = 0; i < chunks.length; i++) {
       log(`Processing chunk ${i + 1} of ${chunks.length} for request ${requestId}`);
       try {
-        const chunkTranslation = await translateChunk(chunks[i], requestId, page, chatGPTUrl, promptPrefix);
+        const chunkTranslation = await translateChunk(
+          chunks[i], 
+          requestId, 
+          page, 
+          chatGPTUrl, 
+          promptPrefix,
+          isRawText
+        );
+        
         fullTranslation += (i > 0 ? "\n\n" : "") + chunkTranslation;
         processedWords += chunks[i].split(/\s+/).length;
         const progress = Math.min((processedWords / totalWords) * 100, 100);
@@ -654,7 +674,15 @@ app.post('/chunk-and-translate', async (req, res) => {
           await ensureLoggedIn(page, requestId);
 
           await new Promise(resolve => setTimeout(resolve, 5000));
-          const retryTranslation = await translateChunk(chunks[i], requestId, page, chatGPTUrl, promptPrefix);
+          const retryTranslation = await translateChunk(
+            chunks[i], 
+            requestId, 
+            page, 
+            chatGPTUrl, 
+            promptPrefix,
+            isRawText
+          );
+          
           fullTranslation += (i > 0 ? "\n\n" : "") + retryTranslation;
           processedWords += chunks[i].split(/\s+/).length;
           const progress = Math.min((processedWords / totalWords) * 100, 100);
