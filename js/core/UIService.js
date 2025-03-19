@@ -486,7 +486,7 @@ class UIService {
       }
 
       this.quill = new window.Quill('#translation-output', {
-        theme: 'snow',
+        theme: 'bubble',
         modules: {
           toolbar: false, // No toolbar for the output
           history: {     // Enable undo/redo

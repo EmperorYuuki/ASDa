@@ -104,7 +104,7 @@ function initializeQuill() {
     }
     
     const quill = new window.Quill('#translation-output', {
-      theme: 'snow',
+      theme: 'bubble',
       modules: {
         toolbar: false,
         history: {
